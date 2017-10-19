@@ -25,16 +25,13 @@ var dbinfo = fmt.Sprintf("host=%s port=%s "+
 func db_connect() *sql.DB {
 	db, err := sql.Open("postgres", dbinfo)
 	if err != nil {
-		fmt.Println("connected!")
-	} else {
 		fmt.Println("couldn't connect to DB")
-		fmt.Println(db)
 	}
 	return db
 }
 
 // no prepared statement
-func BenchmarkPqInsert(b *testing.B) {
+func benchmarkPgxInsert(b *testing.B) {
 	db := db_connect()
 	b.ResetTimer()
 
@@ -44,17 +41,17 @@ func BenchmarkPqInsert(b *testing.B) {
 	}
 }
 
-func benchmarkPqUpdate(b *testing.B) {
+func benchmarkPgxUpdate(b *testing.B) {
 
 }
 
-func benchmarkPqDelete(b *testing.B) {
+func benchmarkPgxDelete(b *testing.B) {
 
 }
 
-func benchmarkPqSelect(b *testing.B) {
+func benchmarkPgxSelect(b *testing.B) {
 
 }
 
 //benchmarks
-//func BenchmarkPqInsert1000 (b *testing.B) { benchmarkPqInsert(b) }
+func BenchmarkPgxInsert1000 (b *testing.B) { benchmarkPgxInsert(b) }
