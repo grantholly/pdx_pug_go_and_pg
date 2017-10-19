@@ -3,76 +3,112 @@ package main
 import(
 	"fmt"
 
-	"github.com/go-pg"
+	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/orm"
 )
 
-type Pet struct {
-     Id    int64
-     Name  string
-     Owner *Person
+type User struct {
+    Id     int64
+    Name   string
+    Emails []string
 }
 
-func (p Pet) String () string {
-     return fmt.Sprintf("Pet <%d %s %s>", p.Id, p.Name, p.Owner)
+func (u User) String() string {
+    return fmt.Sprintf("User<%d %s %v>", u.Id, u.Name, u.Emails)
 }
 
-type Person struct {
-     Id   int64
-     Name string
-     Pets []Pet
+type Story struct {
+    Id       int64
+    Title    string
+    AuthorId int64
+    Author   *User
 }
 
-func (p Person) String () string {
-     return fmt.Sprintf("Person <%d %s %v>", p.Id, p.Name, p.Pets)
+func (s Story) String() string {
+    return fmt.Sprintf("Story<%d %s %s>", s.Id, s.Title, s.Author)
 }
-
-func MakeSchema () {
-     models := []interface{}{&Pet, &Person}
-     
-     for _, model := range models {
-     	 err := db.CreateTable(model, nil)
-	 if err != nil {
-	    fmt.Println("couldn't create model %s", model)
-	 }
-     }
-     
-     return nil
-}
-
-func AddPets () {
-     pets := map[int]string{
-     	  1: "chuck",
-	  2: "baxter",
-	  3: "dolly",
-	  4: "spike",
-	  5: "molly",
-	  6: "bozo",
-	  7: "woof",
-	  8: "felix",
-	  9: "toot toot",
-     }
-     all_pets := []*Pet
-
-     for k, v := range pets {
-     	 p := Pet{
-	     id: k,
-	     
-	 }
-     }
-}
-
-func AddPeople () {}
 
 func main () {
 
-     fmt.Println("registering models")
-     MakeSchema()
+     db := pg.Connect(&pg.Options{
+         User: "postgres",
+	 Password: "postgres",
+	 Database: "demo",
+	 PoolSize: 10,
+	 Addr: "192.168.0.100:5432",
+     })
 
-     fmt.Println("adding pets")
-     AddPets()
+     defer db.Close()
 
-     fmt.Println("adding people")
-     AddPeople()
+    err := createSchema(db)
+    if err != nil {
+        panic(err)
+    }
 
-     
+    user1 := &User{
+        Name:   "admin",
+        Emails: []string{"admin1@admin", "admin2@admin"},
+    }
+    err = db.Insert(user1)
+    if err != nil {
+        panic(err)
+    }
+
+    err = db.Insert(&User{
+        Name:   "root",
+        Emails: []string{"root1@root", "root2@root"},
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    story1 := &Story{
+        Title:    "Cool story",
+        AuthorId: user1.Id,
+    }
+    err = db.Insert(story1)
+    if err != nil {
+        panic(err)
+    }
+
+    // Select user by primary key.
+    user := User{Id: user1.Id}
+    err = db.Select(&user)
+    if err != nil {
+        panic(err)
+    }
+
+    // Select all users.
+    var users []User
+    err = db.Model(&users).Select()
+    if err != nil {
+        panic(err)
+    }
+
+    // Select story and associated author in one query.
+    var story Story
+    err = db.Model(&story).
+        Column("story.*", "Author").
+        Where("story.id = ?", story1.Id).
+        Select()
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println(user)
+    fmt.Println(users)
+    fmt.Println(story)
+}
+
+func createSchema(db *pg.DB) error {
+    for _, model := range []interface{}{&User{}, &Story{}} {
+        err := db.CreateTable(model, &orm.CreateTableOptions{
+            Temp: false,
+        })
+        if err != nil {
+            return err
+        }
+    }
+    return nil
+
 }
